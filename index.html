@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICT Questions</title>
+    <link rel="stylesheet" href="./css/bootstrap.min.css">
+    <script src="./js/jquery-3.4.1.min.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+<!--    <script src="https://kit.fontawesome.com/1a60e606c3.js" crossorigin="anonymous"></script>-->
+    <script src="./js/a.js"></script>
+    <style>
+        .bw {width: 45px !important;}
+    </style>
+    <script>
+        $(document).ready(function () {
+            $.getJSON("https://opentdb.com/api.php?amount=10&category=18&difficulty=medium&type=multiple",function (result) {
+                imgloading.style.display="none";
+
+                body.style.display="block";
+                q = result.results;
+                function Question() {}
+
+                //Creating custom object containg questins and answeres
+                reviewState = 0;
+                mcq = [];
+                for (let i = 0; i<q.length; i++){
+                    let choices = q[i].incorrect_answers;
+                    let randomIndex = Math.floor((Math.random()*10)/3);
+                    choices.splice(randomIndex,0,q[i].correct_answer)
+
+                    let question = new Question();
+                    question.questionNumber = i+1;
+                    question.questionDescription = q[i].question;
+                    question.choices = choices;
+                    question.answer = q[i].correct_answer;
+                    question.studentAnswer="";
+                    question.studentResponseState="notanswered"
+                    mcq.push(question)
+                }
+
+                //Generating Question Buttons
+                for (i in mcq) {
+                    $("#btnQuestion").append(
+                        $('<button></button>').attr({type: "button","data-number":mcq[i].questionNumber}).addClass("btn btn-outline-secondary bw").text(mcq[i].questionNumber)
+                    );
+                }
+
+                //Displaying Correct Q&A on the card !important
+                $(".bw").click(function () {
+                    let qa = JSON.parse(this.getAttribute("data-question"));
+                    qno = this.getAttribute("data-number");
+
+                    questionNumberField.innerHTML = mcq[qno-1].questionNumber+". ";
+                    questionField.innerHTML = mcq[qno-1].questionDescription;
+
+                    //Printing Choices(Answeres) on Label field & Binding values on radio buttons
+                    let cd = document.getElementsByClassName("choicedescription");
+                    rbtn = document.getElementsByName("Q1A1");
+
+                    for(let i=0; i<cd.length;i++){
+                        cd[i].innerHTML = mcq[qno-1].choices[i]+"  ";
+                        rbtn[i].value = mcq[qno-1].choices[i];
+                        rbtn[i].checked=false;
+
+                        //Showing(Checking) previously answered Questions
+                        if(rbtn[i].value==mcq[qno-1].studentAnswer) {
+                            rbtn[i].checked = true;
+                        }
+
+                        //Displayin Correct/ Incorect when question review is initiated
+                        if (reviewState==1){
+                            cd[i].classList.remove("text-success");
+                            cd[i].classList.remove("text-danger");
+
+                            if (rbtn[i].value==mcq[qno-1].answer) {
+                                let correct = document.createElement("i");
+                                correct.classList.add("fas");
+                                correct.classList.add("fa-check");
+                                correct.classList.add("text-success");
+                                cd[i].appendChild(correct);
+                                cd[i].classList.add("text-success");
+                            }else if (mcq[qno-1].studentAnswer == rbtn[i].value) {
+                                let incorrect = document.createElement("i");
+                                incorrect.classList.add("fas");
+                                incorrect.classList.add("fa-times");
+                                incorrect.classList.add("text-danger");
+                                cd[i].appendChild(incorrect);
+                                cd[i].classList.add("text-danger");
+                            }
+                        }
+                    }
+
+                    //Changing button Colors
+                    btnQ = document.querySelectorAll('[data-number]');
+                    for(let i =0 ; i<btnQ.length;i++){
+                        if (btnQ[i].getAttribute("data-number")==(qno)){
+                            btnQ[i].classList.remove("btn-outline-secondary");
+                            btnQ[i].classList.add("btn-secondary");
+                        } else {
+                            btnQ[i].classList.remove("btn-secondary");
+                            btnQ[i].classList.add("btn-outline-secondary");
+                        }
+                    }
+                    // Enabling Disabling Next Previous Buttons
+                    if (qno==1){
+                        btnPrevious.setAttribute("disabled","disabled");
+                    }else if (qno==10){
+                        btnNext.setAttribute("disabled","disabled");
+                    }else {
+                        btnPrevious.removeAttribute("disabled");
+                        btnNext.removeAttribute("disabled");
+                    }
+
+                });
+
+                //Next Previous button Change
+                $("#btnNext").click(function () {
+                    let x = "[data-number="+(window.parseInt(qno)+1)+"]"
+                    $(x).click();
+                });
+                $("#btnPrevious").click(function () {
+                    let x = "[data-number="+(window.parseInt(qno)-1)+"]";
+                    $(x).click();
+                });
+
+                //Binding Answer to mcq array
+                $('[name="Q1A1"]').change(function () {
+                    mcq[qno-1].studentAnswer = this.value;
+                    mcq[qno-1].studentResponseState = "answered";
+                });
+
+                //Showing Pass/Fail and Marks
+                $("#submit").click(function () {
+                    marks = 0;
+                    porf = "Fail"
+                    for (let i = 0; i< mcq.length; i++){
+
+                       if (mcq[i].answer==mcq[i].studentAnswer){
+                           marks += 10;
+                       }
+                    }
+                    if (marks>=50){
+                        porf="Pass";
+                        passorfail.classList.remove("text-danger");
+                        passorfail.classList.add("text-success");
+                    }
+
+                    passorfail.innerHTML = porf;
+                    marksDisplay.innerHTML = "Marks : "+marks+"%"
+                    $("#submitModal").modal({keyboard: false/*,backdrop: 'static'*/});
+                });
+
+                //Try again button reloads the page
+                $(".btntryagain").click(function () {
+                    location.reload();
+                });
+
+                //Question Review
+                $("#btnreview").click(function () {
+                    reviewState = 1;
+                    $("#submitModal").modal('hide');
+                    $("[data-number=1]").click();
+                    submit.setAttribute("disabled","disablrd");
+                    btnTry.style.display="block";
+
+                    let btns = document.getElementsByClassName("bw");
+                    for (let i = 0;i<btns.length; i++){
+
+                        if (mcq[i].studentResponseState!="notanswered")
+                            if(mcq[i].studentAnswer==mcq[i].answer){
+                                btns[i].classList.add("bg-success");
+                                btns[i].classList.add("text-light");
+                            }else {
+                                btns[i].classList.add("bg-danger");
+                                btns[i].classList.add("text-light");
+                            }
+                    }
+                });
+
+                //This initiate first button click to show first question
+                $("[data-number=1]").click();
+            });
+        });
+    </script>
+</head>
+<body>
+<img style="width: 300px;height: 300px; position: absolute;top: 30%;left: 40% " class="img-fluid"  id="imgloading" src="./resources/loading.gif">
+    <div id="body" style="display: none" class="container">
+        <div class="row">
+            <div class="col-md-12 bg-dark">
+                <h1 class="display-4 text-center text-white">ICT MCQ Questions </h1>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12 p-0">
+                <div class="card mt-4">
+                    <h5 class="card-title mt-3 ml-3">Following Questions has one correct answer. Read carefully and answer them</h5>
+                    <div  class="card-body">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <span id="questionNumberField">Qustion Number :</span>
+                                <span id="questionField">Question</span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 mt-3 ml-4">
+                                <div class="custom-control custom-radio mt-2">
+                                    <input type="radio" id="first" name="Q1A1" class="custom-control-input">
+                                    <label class="custom-control-label choicedescription" for="first"></label>
+                                </div>
+                                <div class="custom-control custom-radio mt-2">
+                                    <input type="radio" id="second" name="Q1A1" class="custom-control-input">
+                                    <label  class="custom-control-label choicedescription" for="second"></label>
+
+                                </div>
+                                <div class="custom-control custom-radio mt-2">
+                                    <input type="radio" id="third" name="Q1A1" class="custom-control-input">
+                                    <label  class="custom-control-label choicedescription" for="third"></label>
+                                </div>
+                                <div class="custom-control custom-radio mt-2">
+                                    <input type="radio" id="forth" name="Q1A1" class="custom-control-input">
+                                    <label class="custom-control-label choicedescription" for="forth"></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="row">
+                            <div class="col-md-2">
+                                <div class="btn-group" role="group" aria-label="Third group">
+                                    <button id="btnPrevious" type="button" class="btn btn-primary" style="width: 90px">Previous</button>
+                                    <button id="btnNext" type="button" class="btn btn-primary ml-1" style="width: 90px">Next</button>
+                                </div>
+                            </div>
+                            <div class="col-md-8 text-center">
+                                <div id="btnQuestion" class="btn-group" role="group" aria-label="Basic example"></div>
+                            </div>
+                            <div class="col-md-2 text-right">
+                                <div class="btn-group" role="group" aria-label="Third group">
+                                    <button id="btnTry" style="display: none" type="button" class="btn btn-warning btntryagain mr-1" >Retry</button>
+                                    <button type="button" class="btn btn-success" id="submit">Submit</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<!-- Modal Codes -->
+    <div class="modal fade" id="submitModal" tabindex="-1" role="dialog"  aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+
+                <div class="modal-body">
+                    <h1 class="display-2 text-danger text-center" id="passorfail"></h1>
+                    <h1 class="display-4 text-center" id="marksDisplay"></h1>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-warning" id="btnreview" >Review Questions</button>
+                    <button type="button" class="btn btn-primary btntryagain" >Try Again</button>
+                </div>
+            </div>
+        </div>
+    </div>
+<!-- End of modal codes   -->
+</body>
+</html>
